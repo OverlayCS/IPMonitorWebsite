@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 monitor = Monitor()
 
-HOST_IP = socket.gethostbyname(socket.gethostname())
+HOST_IP = socket.gethostbyname(socket.gethostname()) #gets host ip
 
 
 def is_host():
