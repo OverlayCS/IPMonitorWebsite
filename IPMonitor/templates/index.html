@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IP Monitor</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #0b1220;
+            color: white;
+        }
+
+        header {
+            padding: 16px;
+            background: #111827;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        .wrap {
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .add {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: #1f2937;
+            color: white;
+        }
+
+        button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+        }
+
+        .card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .ok { color: #22c55e; }
+        .down { color: #ef4444; }
+
+        .alert {
+            border: 1px solid #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+
+        .remove {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #ef4444;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .remove:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <b>🌐 IP Monitor (Fixed + Stable)</b>
+</header>
+
+<div class="wrap">
+
+    <div class="add">
+        <input id="ipInput" placeholder="Enter IP">
+        <button onclick="addIp()">Add</button>
+    </div>
+
+    <div id="grid" class="grid"></div>
+
+</div>
+
+<script>
+
+let alerted = new Set();
+let isHost = false;
+
+const grid = document.getElementById("grid");
+
+async function getPermissions() {
+
+    const res = await fetch("/api/me");
+    const data = await res.json();
+
+    isHost = data.is_host;
+}
+
+// Create card
+function createCard(ip, d) {
+
+    const card = document.createElement("div");
+
+    card.className = "card";
+    card.dataset.ip = ip;
+
+    card.innerHTML = `
+        ${isHost ? '<button class="remove">✖</button>' : ''}
+
+        <input
+            class="label"
+            value="${d.label || ""}"
+            placeholder="Label..."
+        >
+
+        <br><br>
+
+        <b class="ip">${ip}</b>
+
+        <br><br>
+
+        <span class="status ${d.ok ? "ok" : "down"}">
+            ${d.ok ? "ONLINE" : "DOWN"}
+        </span>
+
+        <br><br>
+
+        <small class="stats">
+            Samples: ${d.samples}
+            <br>
+            Recent fails: ${d.recent_failures}
+        </small>
+
+        <br><br>
+
+        <small class="time">
+            ${d.time}
+        </small>
+    `;
+
+    const removeBtn =
+        card.querySelector(".remove");
+
+    if (removeBtn) {
+
+        removeBtn.addEventListener(
+            "click",
+            async () => {
+
+                const res = await fetch(
+                    "/api/remove",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                            "application/json"
+                        },
+                        body: JSON.stringify({
+                            ip
+                        })
+                    }
+                );
+
+                const result =
+                    await res.json();
+
+                if (!result.ok) {
+                    alert(result.error);
+                    return;
+                }
+
+                alerted.delete(ip);
+
+                card.remove();
+            }
+        );
+    }
+
+    // Label save
+    card.querySelector(".label")
+        .addEventListener("blur", async (e) => {
+
+            await fetch("/api/label", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    ip,
+                    label: e.target.value
+                })
+            });
+
+        });
+
+    return card;
+}
+
+
+// Initial load
+async function load() {
+
+    const res = await fetch("/api/ips");
+    const data = await res.json();
+
+    grid.innerHTML = "";
+
+    for (const ip in data.ips) {
+
+        const d = data.ips[ip];
+
+        const card = createCard(ip, d);
+
+        grid.appendChild(card);
+    }
+}
+
+
+// Update only status data
+async function updateStatuses() {
+
+    const res = await fetch("/api/ips");
+    const data = await res.json();
+
+    for (const ip in data.ips) {
+
+        const d = data.ips[ip];
+
+        let card =
+            document.querySelector(
+                `[data-ip="${ip}"]`
+            );
+
+        // New card added from another browser/tab
+        if (!card) {
+
+            card = createCard(ip, d);
+
+            grid.appendChild(card);
+        }
+
+        const status =
+            card.querySelector(".status");
+
+        status.textContent =
+            d.ok ? "ONLINE" : "DOWN";
+
+        status.className =
+            `status ${d.ok ? "ok" : "down"}`;
+
+        card.querySelector(".stats").innerHTML = `
+            Samples: ${d.samples}
+            <br>
+            Recent fails: ${d.recent_failures}
+        `;
+
+        card.querySelector(".time").textContent =
+            d.time;
+
+        if (d.alert)
+            card.classList.add("alert");
+        else
+            card.classList.remove("alert");
+
+        // Alert once
+        if (
+            d.alert &&
+            !alerted.has(ip)
+        ) {
+            trigger(ip);
+            alerted.add(ip);
+        }
+
+        if (!d.alert) {
+            alerted.delete(ip);
+        }
+    }
+}
+
+
+// Audio alert
+function trigger(ip) {
+
+    const audio =
+        new Audio("/static/alert.mp3");
+
+    audio.play();
+
+    const msg =
+        new SpeechSynthesisUtterance(
+            `Alert. ${ip} is down`
+        );
+
+    speechSynthesis.speak(msg);
+}
+
+
+// Add IP
+async function addIp() {
+
+    const ip =
+        document.getElementById(
+            "ipInput"
+        ).value.trim();
+
+    if (!ip)
+        return;
+
+    await fetch("/api/add", {
+        method: "POST",
+        headers: {
+            "Content-Type":
+            "application/json"
+        },
+        body: JSON.stringify({
+            ip
+        })
+    });
+
+    document.getElementById(
+        "ipInput"
+    ).value = "";
+
+    const res =
+        await fetch("/api/ips");
+
+    const data =
+        await res.json();
+
+    if (data.ips[ip]) {
+
+        const card =
+            createCard(
+                ip,
+                data.ips[ip]
+            );
+
+        grid.appendChild(card);
+    }
+}
+
+
+(async () => {
+
+    await getPermissions();
+
+    await load();
+
+    setInterval(
+        updateStatuses,
+        5000
+    );
+
+})();
+
+</script>
+
+</body>
+</html>

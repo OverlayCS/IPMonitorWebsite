@@ -1,0 +1,18 @@
+[
+  {
+    "ip": "8.8.8.8",
+    "label": "Google DNS"
+  },
+  {
+    "ip": "1.1.1.1",
+    "label": "Cloudflare DNS"
+  },
+  {
+    "ip": "irtelhost1.inreachgroup.co.uk",
+    "label": "intalk server"
+  },
+  {
+    "ip": "10.10.3.34",
+    "label": "is down"
+  }
+]
