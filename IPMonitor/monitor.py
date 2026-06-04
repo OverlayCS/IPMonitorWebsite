@@ -180,8 +180,31 @@ class Monitor:
     # ---------------- API ----------------
 
     def get_status(self):
-
+    
         with self.lock:
+    
+            ips = {}
+    
+            for target in self.targets:
+    
+                ip = target["ip"]
+    
+                # if we already have ping data use it
+                if ip in self.status:
+                    ips[ip] = self.status[ip]
+    
+                # otherwise create default data
+                else:
+                    ips[ip] = {
+                        "ip": ip,
+                        "label": target.get("label", ""),
+                        "ok": False,
+                        "time": "Never",
+                        "samples": 0,
+                        "recent_failures": 0,
+                        "alert": False
+                    }
+    
             return {
-                "ips": self.status
+                "ips": ips
             }
