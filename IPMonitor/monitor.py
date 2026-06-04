@@ -27,7 +27,6 @@ class Monitor:
 
         self.load_config()
 
-    # ---------------- CONFIG ----------------
 
     def load_config(self):
 
@@ -50,7 +49,6 @@ class Monitor:
         with open(self.CONFIG_FILE, "w") as f:
             json.dump(self.targets, f, indent=2)
 
-    # ---------------- IP MANAGEMENT ----------------
 
     def add_ip(self, ip):
 
@@ -95,7 +93,6 @@ class Monitor:
 
             self.save_config()
 
-    # ---------------- PING ----------------
 
     def ping(self, ip):
 
@@ -118,7 +115,6 @@ class Monitor:
         except:
             return False
 
-    # ---------------- LOOP ----------------
 
     def run(self):
 
@@ -177,7 +173,6 @@ class Monitor:
 
             time.sleep(5)
 
-    # ---------------- API ----------------
 
     def get_status(self):
     
@@ -189,11 +184,9 @@ class Monitor:
     
                 ip = target["ip"]
     
-                # if we already have ping data use it
                 if ip in self.status:
                     ips[ip] = self.status[ip]
     
-                # otherwise create default data
                 else:
                     ips[ip] = {
                         "ip": ip,
