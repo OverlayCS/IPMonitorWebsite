@@ -304,19 +304,25 @@ async function updateStatuses() {
 }
 
 
-// Audio alert
 function trigger(ip) {
-
     const audio =
         new Audio("/static/alert.mp3");
-
     audio.play();
-
+    const card =
+        document.querySelector(
+            `[data-ip="${ip}"]`
+        );
+    let name = ip;
+    if (card) {
+        const label =
+            card.querySelector(".label").value;
+        if (label)
+            name = label;
+    }
     const msg =
         new SpeechSynthesisUtterance(
-            `Alert. ${ip} is down`
+            `Alert. ${name} is down`
         );
-
     speechSynthesis.speak(msg);
 }
 
